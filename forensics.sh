@@ -1,12 +1,38 @@
 #Ken Webster kenneth.webster@imperva.com 10/2021
 
-echo "Forensics Collector v0.3"
+echo "Forensics Collector v0.4 updated 4/2023"
+echo "Written by @sundruid@infosec.exchange"
 echo ""
+
+uploader(){
+    
+    if [ -e forensics.out -o -e new_files.out ]; then
+        echo "packing and uploading to vuser.imperva.local"
+        tar -czf - /var/log new_files.out forensics.out | ssh drop@35.165.222.145 "cat > `hostname`.`date +%Y%m%d-%H%M%S`.infosec.forensics.tar.gz"
+        wait $!
+        echo "Transfer complete"
+        exit 0
+    else
+        echo "Collection files do not exist. If you are running with -u option, try it without."
+        exit 0
+    fi
+
+}
+
 
 if [ `id -u` -ne 0 ]
    then echo "Must be run as root or sudo"
-   exit
+   exit 0
 fi
+
+
+if [ "$1" = "-u" ]
+
+then
+    uploader
+    exit 0
+fi
+
 
 echo "DATE" >> forensics.out
 date > forensics.out
@@ -103,12 +129,20 @@ echo "" >> forensics.out
 echo "NEW FILES created in last 14 days exclude: /proc /sys /var/cache /run /dev"
 find / -executable -mtime -14 |grep -v "Permission denied" |grep -v /sys |grep -v /proc |grep -v /var/cache |grep -v /run |grep -v /dev >> new_files.out
 
-tar -czf - /var/log new_files.out forensics.out | ssh drop@vuser.imperva.local "cat > `hostname`.`date +%Y%m%d-%H%M%S`.infosec.forensics.tar.gz"
+forensics_hash=$(sha256sum forensics.out | awk '{print $1}')
+newfiles_hash=$(sha256sum new_files.out | awk '{print $1}')
+logger "Forensics sha256 HASH calculation for forensics.out is $forensics_hash"
+logger "Forensics sha256 HASH calculation for new_files.out is $newfiles_hash"
 
-wait $!
+read -p "Do you have a password to upload this file to the forensics server? (yes/no) " answer
 
-echo "Transfer complete"
+if [ "$answer" = "yes" ]
+then
+    uploader
+fi
 
-#If you want to use scp do this: "scp *.forensics.tar.gz drop@35.165.222.145:."
+echo "Output files are contained in this directory. Move them to a safe location for future analysis. If you obtain a password for upload, execute this script with a -u option to upload without recollecting."
+
+
 
 
