@@ -1,7 +1,7 @@
 #Ken Webster kenneth.webster@imperva.com 10/2021
 
-echo "Forensics Collector v0.4 updated 4/2023"
-echo "Written by @sundruid@infosec.exchange"
+echo "Forensics Collector v0.5 updated 11/2023"
+echo "Maintained by kenneth.webster@imperva.com"
 echo ""
 
 uploader(){
@@ -54,28 +54,20 @@ echo "WHO -A" >> forensics.out
 who -a >> forensics.out
 echo "" >> forensics.out
 
-echo "IFCONFIG -A" >> forensics.out
-ifconfig -a >> forensics.out
+echo "IP ADDR SHOW" >> forensics.out
+ip addr show >> forensics.out
 echo "" >> forensics.out
 
-echo "NETSTAT -ANP" >> forensics.out
-netstat -anp >> forensics.out
+echo "SS -TULN" >> forensics.out
+ss -tuln >> forensics.out
 echo "" >> forensics.out
 
 echo "LSOF -V" >> forensics.out
 lsof -V >> forensics.out
 echo "" >> forensics.out
 
-echo "PS -AUX" >> forensics.out
-ps -aux >> forensics.out
-echo "" >> forensics.out
-
-echo "PS -EF" >> forensics.out
-ps -ef >> forensics.out
-echo "" >> forensics.out
-
-echo "NETSTAT -RN" >> forensics.out
-netstat -rn >> forensics.out
+echo "PS -AUX -EF" >> forensics.out
+ps -eo user,pid,ppid,%cpu,%mem,vsz,rss,tty,stat,start,time,cmd >> forensics.out
 echo "" >> forensics.out
 
 echo "MOUNT" >> forensics.out
@@ -142,7 +134,3 @@ then
 fi
 
 echo "Output files are contained in this directory. Move them to a safe location for future analysis. If you obtain a password for upload, execute this script with a -u option to upload without recollecting."
-
-
-
-
