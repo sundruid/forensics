@@ -1,14 +1,13 @@
 #Ken Webster kenneth.webster@imperva.com 10/2021
 
 echo "Forensics Collector v0.5 updated 11/2023"
-echo "Maintained by kenneth.webster@imperva.com"
 echo ""
 
 uploader(){
     
     if [ -e forensics.out -o -e new_files.out ]; then
-        echo "packing and uploading to vuser.imperva.local"
-        tar -czf - /var/log new_files.out forensics.out | ssh drop@35.165.222.145 "cat > `hostname`.`date +%Y%m%d-%H%M%S`.infosec.forensics.tar.gz"
+        echo "packing and uploading to forensics server"
+        tar -czf - /var/log new_files.out forensics.out | ssh drop@<your.host> "cat > `hostname`.`date +%Y%m%d-%H%M%S`.infosec.forensics.tar.gz"
         wait $!
         echo "Transfer complete"
         exit 0
