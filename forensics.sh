@@ -1,6 +1,5 @@
-#Ken Webster kenneth.webster@imperva.com 10/2021
-
 echo "Forensics Collector v0.5 updated 11/2023"
+echo "Go Blue Team"
 echo ""
 
 uploader(){
