@@ -1,134 +1,97 @@
-echo "Forensics Collector v0.5 updated 11/2023"
+#!/bin/bash
+
+echo "Forensics Collector v0.8 updated 08/2024"
 echo "Go Blue Team"
 echo ""
+echo "  Example SCP command to download files later:"
+echo "    scp -i \"~/.ssh/your_key.pem\" your_login@your_remote_server:/home/location_of_files/*.gz ."
 
-uploader(){
-    
-    if [ -e forensics.out -o -e new_files.out ]; then
-        echo "packing and uploading to forensics server"
-        tar -czf - /var/log new_files.out forensics.out | ssh drop@<your.host> "cat > `hostname`.`date +%Y%m%d-%H%M%S`.infosec.forensics.tar.gz"
-        wait $!
-        echo "Transfer complete"
-        exit 0
-    else
-        echo "Collection files do not exist. If you are running with -u option, try it without."
-        exit 0
-    fi
-
+usage() {
+    echo "Usage:"
+    echo "  Run without options to collect forensic data:"
+    echo "    sudo ./forensics_collector.sh"
 }
 
-
-if [ `id -u` -ne 0 ]
-   then echo "Must be run as root or sudo"
-   exit 0
+if [ `id -u` -ne 0 ]; then
+    echo "Error: Must be run as root or sudo."
+    usage
+    exit 1
 fi
 
+echo "Starting forensic data collection..."
 
-if [ "$1" = "-u" ]
+# Create or clear the forensics output file
+echo "DATE" > forensics.out
+date >> forensics.out
+echo "" >> forensics.out
 
-then
-    uploader
-    exit 0
+# Collect system information
+commands=(
+    "UNAME -A" "uname -a"
+    "SUDOERS" "getent group sudo | cut -d: -f4"
+    "CRONTAB -L" "crontab -l"
+    "WHO -A" "who -a"
+    "IP ADDR SHOW" "ip addr show"
+    "SS -TULN" "ss -tuln"
+    "LSOF -V" "lsof -V"
+    "PS -AUX -EF" "ps -eo user,pid,ppid,%cpu,%mem,vsz,rss,tty,stat,start,time,cmd"
+    "MOUNT" "mount"
+    "DF" "df"
+    "LSMOD" "lsmod"
+    "LAST" "last"
+    "LASTB" "lastb"
+    "PASSWD" "cat /etc/passwd"
+    "GROUP" "cat /etc/group"
+    "SHADOW" "cat /etc/shadow"
+    "DU -HC" "du -hc /var/log"
+    "DOCKER PS" "docker ps /dev/null 2>&1"
+    "IPTABLES -L -n -v" "iptables -L -n -v"
+    "SSH_host_*_key.pub" "cat /etc/ssh/ssh_host_*_key.pub"
+)
+
+# Loop through and collect output
+for ((i=0; i<${#commands[@]}; i+=2)); do
+    echo "${commands[i]}" >> forensics.out
+    eval "${commands[i+1]}" >> forensics.out
+    echo "" >> forensics.out
+done
+
+# Check if nftables exists and collect its configuration
+if command -v nft > /dev/null 2>&1; then
+    echo "NFTABLES CONFIGURATION" >> forensics.out
+    nft list ruleset >> forensics.out
+    echo "" >> forensics.out
+else
+    echo "NFTABLES not found on this system." >> forensics.out
+    echo "" >> forensics.out
 fi
 
-
-echo "DATE" >> forensics.out
-date > forensics.out
-echo "" >> forensics.out
-
-echo "UNAME -A" >> forensics.out
-uname -a >> forensics.out
-echo "" >> forensics.out
-
-echo "SUDOERS" >> forensics.out
-getent group sudo | cut -d: -f4
-echo "" >> forensics.out
-
-echo "CRONTAB -L" >> forensics.out
-crontab -l >> forensics.out
-echo "" >> forensics.out
-
-echo "WHO -A" >> forensics.out
-who -a >> forensics.out
-echo "" >> forensics.out
-
-echo "IP ADDR SHOW" >> forensics.out
-ip addr show >> forensics.out
-echo "" >> forensics.out
-
-echo "SS -TULN" >> forensics.out
-ss -tuln >> forensics.out
-echo "" >> forensics.out
-
-echo "LSOF -V" >> forensics.out
-lsof -V >> forensics.out
-echo "" >> forensics.out
-
-echo "PS -AUX -EF" >> forensics.out
-ps -eo user,pid,ppid,%cpu,%mem,vsz,rss,tty,stat,start,time,cmd >> forensics.out
-echo "" >> forensics.out
-
-echo "MOUNT" >> forensics.out
-mount >> forensics.out
-echo "" >> forensics.out
-
-echo "DF" >> forensics.out
-df >> forensics.out
-echo "" >> forensics.out
-
-echo "LSMOD" >> forensics.out
-lsmod >> forensics.out
-echo "" >> forensics.out
-
-echo "LAST" >> forensics.out
-last >> forensics.out
-echo "" >> forensics.out
-
-echo "LASTB" >> forensics.out
-lastb >> forensics.out
-echo "" >> forensics.out
-
-echo "PASSWD" >> forensics.out
-cat /etc/passwd >> forensics.out
-echo "" >> forensics.out
-
-echo "GROUP" >> forensics.out
-cat /etc/group >> forensics.out
-echo "" >> forensics.out
-
-echo "SHADOW" >> forensics.out
-cat /etc/shadow >> forensics.out
-echo "" >> forensics.out
-
-echo "DU -HC" >> forensics.out
-du -hc /var/log >> forensics.out
-echo "" >> forensics.out
-
-echo "DOCKER PS" >> forensics.out
-docker ps /dev/null 2>&1 >> forensics.out
-echo "" >> forensics.out
-
-echo "IPTABLES -L -n -v" >> forensics.out
-iptables -L -n -v >> forensics.out
-echo "" >> forensics.out
-
-echo "SSH_host_*_key.pub" >> forensics.out
-cat /etc/ssh/ssh_host_*_key.pub >> forensics.out
-echo "" >> forensics.out
-
+# Collect new files created in the last 14 days
 echo "NEW FILES created in last 14 days exclude: /proc /sys /var/cache /run /dev"
-find / -executable -mtime -14 |grep -v "Permission denied" |grep -v /sys |grep -v /proc |grep -v /var/cache |grep -v /run |grep -v /dev >> new_files.out
+find / -executable -mtime -14 2>/dev/null | grep -v "/sys\|/proc\|/var/cache\|/run\|/dev" >> new_files.out
 
+# Collect journalctl logs for the last 14 days
+echo "Collecting journalctl logs from the last 14 days..."
+journalctl --since="14 days ago" > journalctl.out
+
+# Generate hash values
 forensics_hash=$(sha256sum forensics.out | awk '{print $1}')
 newfiles_hash=$(sha256sum new_files.out | awk '{print $1}')
-logger "Forensics sha256 HASH calculation for forensics.out is $forensics_hash"
-logger "Forensics sha256 HASH calculation for new_files.out is $newfiles_hash"
+journalctl_hash=$(sha256sum journalctl.out | awk '{print $1}')
 
-read -p "Do you have a password to upload this file to the forensics server? (yes/no) " answer
+logger "Forensics sha256 HASH for forensics.out is $forensics_hash"
+logger "Forensics sha256 HASH for new_files.out is $newfiles_hash"
+logger "Forensics sha256 HASH for journalctl.out is $journalctl_hash"
 
-if [ "$answer" = "yes" ]
-then
-    uploader
+# Archive all files
+tar_filename="`hostname`.`date +%Y%m%d-%H%M%S`.infosec.forensics.tar.gz"
+tar -czf $tar_filename forensics.out new_files.out journalctl.out
+
+# Check if tar was successful
+if [ $? -eq 0 ]; then
+    echo "Files successfully archived as $tar_filename"
+    echo "Move them to a safe location for future analysis."
+else
+    echo "Error: Failed to create the tar.gz archive."
+    exit 1
 fi
-
-echo "Output files are contained in this directory. Move them to a safe location for future analysis. If you obtain a password for upload, execute this script with a -u option to upload without recollecting."
