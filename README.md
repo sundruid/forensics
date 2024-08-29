@@ -9,13 +9,13 @@
 ## Usage Examples:
 
 1. **Single Host Without Password**:
-   `./forensics_collector.sh <remote_ip_or_hostname>`
+   `./forensics_collector.py <remote_ip_or_hostname>`
 
 2. **Single Host With Password**:
-   `./forensics_collector.sh <remote_ip_or_hostname> <ssh_password>`
+   `./forensics_collector.py <remote_ip_or_hostname> <ssh_password>`
 
 3. **Multiple Hosts Without Password**:
-   `./forensics_collector.sh -hosts <hosts_file>`
+   `./forensics_collector.py -hosts <hosts_file>`
 
 4. **Multiple Hosts With Password**:
-   `./forensics_collector.sh -hosts <hosts_file> <ssh_password>`
+   `./forensics_collector.py -hosts <hosts_file> <ssh_password>`
