@@ -19,3 +19,6 @@
 
 4. **Multiple Hosts With Password**:
    `./forensics_collector.py -hosts <hosts_file> <ssh_password>`
+
+5. **Analyze.py can use OpenAI to do forensics on collected data**:
+   `analyze.py <recursively reads dir>`
