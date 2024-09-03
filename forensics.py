@@ -13,8 +13,8 @@ print("Go Blue Team")
 print()
 
 # Variables
-SSH_USER = "your-user"  # Replace with your SSH username
-SSH_KEY = "your-key"  # Replace with the path to your SSH key
+SSH_USER = "your_username"  # Replace with your SSH username
+SSH_KEY = "your_ssh_key_path"  # Replace with the path to your SSH key
 
 def run_remote_command(remote_host, command, use_sudo=False):
     ssh_command = [
@@ -145,6 +145,17 @@ def collect_forensics(remote_host):
     os.chdir("..")
     return True
 
+def analyze_forensics(host):
+    host_dir = Path(host)
+    os.chdir(host_dir)
+
+    with open("forensics.out", "r") as f:
+        content = f.read()
+
+    # ... rest of the analysis code ...
+
+    os.chdir("..")
+
 def main():
     parser = argparse.ArgumentParser(description="Forensics Collector")
     parser.add_argument("target", help="Remote IP, hostname, or path to hosts file")
@@ -158,11 +169,15 @@ def main():
         for host in hosts:
             if host.strip():
                 print(f"Starting to process host: {host}")
-                collect_forensics(host.strip())
+                success = collect_forensics(host.strip())
+                if success:
+                    analyze_forensics(host.strip())
                 print(f"Finished processing host: {host}")
         print(f"Finished processing all hosts from {args.target}")
     else:
-        collect_forensics(args.target)
+        success = collect_forensics(args.target)
+        if success:
+            analyze_forensics(args.target)
 
 if __name__ == "__main__":
     main()
