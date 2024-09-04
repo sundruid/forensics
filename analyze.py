@@ -75,10 +75,27 @@ def analyze_with_openai(content, severity_level="informational", log_file=""):
     - Look for files with unusual names, unexpected locations, or suspicious file types.
     - Consider the context of when and where these files were added.
     """
+    elif "iptables.out" in log_file or "nftables.out" in log_file:
+        prompt += """
+    For iptables.out or nftables.out:
+    - Look for unusual or potentially malicious rules.
+    - Pay attention to rules that allow incoming connections on unexpected ports.
+    - Be cautious of rules that permit outbound connections to suspicious IP addresses or domains.
+    - Consider the overall firewall configuration and whether it aligns with expected security practices.
+    """
+    elif any(x in log_file for x in ['journalctl.out', 'syslog.out', 'authlog.out']):
+        prompt += """
+    For system logs (journalctl.out, syslog.out, authlog.out):
+    - Look for failed login attempts, especially if they are repeated or from unexpected sources.
+    - Pay attention to sudo usage and any privilege escalation events.
+    - Consider unusual service starts, stops, or crashes.
+    - Look for evidence of unexpected system reboots or shutdowns.
+    - Be aware of any error messages that might indicate system compromise or malware activity.
+    """
 
     try:
         response = client.chat.completions.create(
-            model="gpt-4o",
+            model="gpt-4o-mini",
             messages=[
                 {"role": "system", "content": "You are a cybersecurity expert specializing in incident response and log analysis."},
                 {"role": "user", "content": prompt + content}
@@ -88,7 +105,7 @@ def analyze_with_openai(content, severity_level="informational", log_file=""):
     except Exception as e:
         return f"Error in OpenAI API call: {e}"
 
-def filter_journalctl_by_days(content, days):
+def filter_logs_by_days(content, days):
     if days is None:
         return content
 
@@ -99,8 +116,12 @@ def filter_journalctl_by_days(content, days):
     for line in content.split('\n'):
         try:
             # Attempt to parse the line as a date
-            current_date = datetime.datetime.strptime(line.strip(), '%Y-%m-%d %H:%M:%S.%f')
-            if current_date >= cutoff_date:
+            date_str = re.search(r'\b\d{4}-\d{2}-\d{2}\b', line)
+            if date_str:
+                current_date = datetime.datetime.strptime(date_str.group(), '%Y-%m-%d')
+                if current_date >= cutoff_date:
+                    filtered_lines.append(line)
+            elif current_date is None or current_date >= cutoff_date:
                 filtered_lines.append(line)
         except ValueError:
             # If it's not a date, include the line if we're within the date range
@@ -147,22 +168,26 @@ def main():
     parser = argparse.ArgumentParser(description="Analyze log files for suspicious activity.")
     parser.add_argument("-level", choices=["informational", "warning", "critical"],
                         default="informational", help="Minimum severity level to report")
-    parser.add_argument("-days", type=int, help="Number of days to analyze for journalctl.out (0 to skip, default: all data)")
+    parser.add_argument("-days", type=int, help="Number of days to analyze for time-based logs (0 to skip, default: all data)")
     args = parser.parse_args()
 
     log_files = glob.glob('**/forensics.out', recursive=True) + \
-                glob.glob('**/new_files.out', recursive=True)
+                glob.glob('**/new_files.out', recursive=True) + \
+                glob.glob('**/iptables.out', recursive=True) + \
+                glob.glob('**/nftables.out', recursive=True)
 
     if args.days != 0:
-        log_files += glob.glob('**/journalctl.out', recursive=True)
+        log_files += glob.glob('**/journalctl.out', recursive=True) + \
+                     glob.glob('**/syslog.out', recursive=True) + \
+                     glob.glob('**/authlog.out', recursive=True)
 
     for log_file in log_files:
         print(f"Analyzing {log_file}...")
         content = read_file(log_file)
         if content:
-            if 'journalctl.out' in log_file and args.days is not None and args.days > 0:
-                content = filter_journalctl_by_days(content, args.days)
-                print(f"Filtered journalctl.out to last {args.days} days")
+            if any(x in log_file for x in ['journalctl.out', 'syslog.out', 'authlog.out']) and args.days is not None and args.days > 0:
+                content = filter_logs_by_days(content, args.days)
+                print(f"Filtered {log_file} to last {args.days} days")
             
             chunks = chunk_content(content)
             print(f"File split into {len(chunks)} chunks.")
