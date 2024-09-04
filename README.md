@@ -9,16 +9,16 @@
 ## Usage Examples:
 
 1. **Single Host Without Password**:
-   `./forensics_collector.py <remote_ip_or_hostname>`
+   `./forensics.py <remote_ip_or_hostname>`
 
 2. **Single Host With Password**:
-   `./forensics_collector.py <remote_ip_or_hostname> <ssh_password>`
+   `./forensics.py <remote_ip_or_hostname> <ssh_password>`
 
 3. **Multiple Hosts Without Password**:
-   `./forensics_collector.py -hosts <hosts_file>`
+   `./forensics.py -hosts <hosts_file>`
 
 4. **Multiple Hosts With Password**:
-   `./forensics_collector.py -hosts <hosts_file> <ssh_password>`
+   `./forensics.py -hosts <hosts_file> <ssh_password>`
 
 5. **Analyze.py can use OpenAI to do forensics on collected data**:
    `analyze.py <recursively reads dir>`
